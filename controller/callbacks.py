@@ -38,9 +38,12 @@ def register_callbacks(app, model: F1DataModel) -> None:
         Input("year-dropdown", "value"),
     )
     def update_driver_standings(year):
+        if year is None:
+            return px.bar(title="Selecione um ano.")
+
         df = model.get_driver_championship_standings(year)
         if df.empty:
-            return px.bar(title="Sem dados de classificação de pilotos.")
+            return px.bar(title=f"Sem dados de classificação de pilotos para {year}.")
 
         fig = px.bar(
             df,
@@ -304,6 +307,7 @@ def register_callbacks(app, model: F1DataModel) -> None:
         Output("graph-circuits-map", "figure"),
         Input("year-dropdown", "value"),  # só para reagir quando o ano muda
     )
+
     def update_circuits_map(_year):
         df = model.get_circuit_locations()
         if df.empty:
@@ -313,7 +317,7 @@ def register_callbacks(app, model: F1DataModel) -> None:
             df,
             lat="lat",
             lon="lng",
-            hover_name="name",
+            hover_name="circuitName",
             hover_data=["country", "location", "raceCount"],
             size="raceCount",
             title="Circuitos de F1 (tamanho = nº de corridas realizadas)",

@@ -276,26 +276,35 @@ class F1DataModel:
     def get_circuit_locations(self) -> pd.DataFrame:
         """
         Circuitos com localização (lat/lng) e quantas corridas já receberam.
+        Usa o nome do circuito (circuitName), não o nome da corrida.
         """
         if self.races.empty or self.circuits.empty:
             return pd.DataFrame()
 
-        cols = ["circuitId", "name", "location", "country", "lat", "lng"]
-        circuits = self.circuits[[c for c in cols if c in self.circuits.columns]].copy()
-        if circuits.empty:
-            return pd.DataFrame()
+        # Pegamos só as colunas relevantes dos circuitos
+        circuits = self.circuits[
+            ["circuitId", "name", "location", "country", "lat", "lng"]
+        ].copy()
 
+        # Renomeia para evitar conflito com races.name (nome do GP)
+        circuits = circuits.rename(columns={"name": "circuitName"})
+
+        # Junta corridas com info de circuito
         merged = self.races.merge(circuits, on="circuitId", how="left")
 
+        # Agrupa para saber quantas corridas cada circuito recebeu
         grouped = (
-            merged.groupby(["circuitId", "name", "location", "country", "lat", "lng"])
+            merged.groupby(
+                ["circuitId", "circuitName", "location", "country", "lat", "lng"]
+            )
             .size()
             .reset_index(name="raceCount")
         )
 
+        # Garante que lat/lng são numéricos
         for col in ("lat", "lng"):
-            if col in grouped.columns:
-                grouped[col] = pd.to_numeric(grouped[col], errors="coerce")
+            grouped[col] = pd.to_numeric(grouped[col], errors="coerce")
 
+        # Remove linhas sem coordenadas
         grouped = grouped.dropna(subset=["lat", "lng"])
         return grouped
